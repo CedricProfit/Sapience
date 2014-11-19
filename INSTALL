@@ -1,0 +1,9 @@
+Building Sapience
+
+See doc/readme-qt.rst for instructions on building Sapience QT,
+the intended-for-end-users, nice-graphical-interface, reference
+implementation of Sapience.
+
+See doc/build-*.txt for instructions on building sapienced,
+the intended-for-services, no-graphical-interface, reference
+implementation of Sapience.
