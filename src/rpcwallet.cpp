@@ -110,6 +110,29 @@ Value getinfo(const Array& params, bool fHelp)
     if (pwalletMain->IsCrypted())
         obj.push_back(Pair("unlocked_until", (int64_t)nWalletUnlockTime / 1000));
     obj.push_back(Pair("errors",        GetWarnings("statusbar")));
+    obj.push_back(Pair("services", strprintf("%08"PRIx64, nLocalServices)));
+
+    std::string svcDesc = "";
+    if(nLocalServices & NODE_NETWORK)
+        svcDesc = "NETWORK";
+
+    if(nLocalServices & NODE_AI)
+        svcDesc += " AI";
+
+    if(nLocalServices & NODE_ASSETS)
+        svcDesc += " ASSETS";
+
+    if(nLocalServices & NODE_BURST)
+        svcDesc += " BURST";
+
+    if(nLocalServices & NODE_IBTP)
+        svcDesc += " IBTP";
+
+    if(nLocalServices & NODE_PLUME)
+        svcDesc += " PLUME";
+
+    obj.push_back(Pair("servicesdesc", svcDesc));
+
     return obj;
 }
 

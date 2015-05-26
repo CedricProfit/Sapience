@@ -8,7 +8,8 @@
 #include "sync.h"
 
 #ifndef WIN32
-#include <sys/fcntl.h>
+//#include <sys/fcntl.h>
+#include <fcntl.h>
 #endif
 
 #include "strlcpy.h"

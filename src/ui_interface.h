@@ -13,6 +13,10 @@
 
 #include <stdint.h>
 
+#include "plume/plumepeer.h"
+#include "plume/plumecore.h"
+#include "ailib/ailib.h"
+
 class CBasicKeyStore;
 class CWallet;
 class uint256;
@@ -91,6 +95,35 @@ public:
      * @note called with lock cs_mapAlerts held.
      */
     boost::signals2::signal<void (const uint256 &hash, ChangeType status)> NotifyAlertChanged;
+
+    // PLUME
+    boost::signals2::signal<void (std::string logMessage)> NotifyPlumeLogEntry;
+
+    // Plume Message
+    // Time, Type (send/receive), Peer Address, Message, message size kb
+    boost::signals2::signal<void (int64_t nTime, std::string msgType, std::string peerAddress, std::string msg, uint sizeKb)> NotifyPlumeMessage;
+
+    // plume peer update
+    boost::signals2::signal<void (CPlumePeer plumepeer)> NotifyPlumePeer;
+
+    // plume data reservation proposal received
+    boost::signals2::signal<void (CDataReservationProposal proposal)> NotifyPlumeProposalReceived;
+
+    boost::signals2::signal<void (uint256 proposalHash)> NotifyProposalAccepted;
+
+    // plume connected peer count updated
+    boost::signals2::signal<void (int peersConnected)> NotifyPlumeConnectedPeerCountChanged;
+
+    boost::signals2::signal<void (uint256 plumeId, int64_t chunkStart)> NotifyPlumeChunkReceived;
+
+    boost::signals2::signal<void (uint256 infohash)> NotifyPlumeDhtGetResponse;
+
+    boost::signals2::signal<void (CPlumeHeader header)> NotifyDataPlumeUpdated;
+
+    boost::signals2::signal<void (CNeuralNetworkHeader header)> NotifyNeuralNetworkUpdated;
+
+    // vocalize request
+    boost::signals2::signal<void (std::string sentence)> NotifyVocalizeRequest;
 };
 
 extern CClientUIInterface uiInterface;

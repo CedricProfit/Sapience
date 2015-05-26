@@ -11,6 +11,7 @@
 #include "ui_interface.h"
 #include "checkpoints.h"
 #include "smessage.h"
+#include "plume/plumecore.h"
 
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -460,6 +461,13 @@ bool AppInit2()
         fDebugSmsg = GetBoolArg("-debugsmsg");
     }
     fNoSmsg = GetBoolArg("-nosmsg");
+
+    /*** XAI Services ***/
+    fPlumeEnabled = GetBoolArg("-plume", true);
+    fAiCoreEnabled = GetBoolArg("-aicore", true);
+    fAssetsEnabled = GetBoolArg("-assets", true);
+    fBurstEnabled = GetBoolArg("-burst", true);
+    fIbtpEnabled = GetBoolArg("-xainet", true);
     
     bitdb.SetDetach(GetBoolArg("-detachdb", false));
 
@@ -481,6 +489,12 @@ bool AppInit2()
     fPrintToConsole = GetBoolArg("-printtoconsole");
     fPrintToDebugger = GetBoolArg("-printtodebugger");
     fLogTimestamps = GetBoolArg("-logtimestamps");
+
+#ifdef ANDROID
+    fPrintToConsole = true;
+    fPrintToDebugger = true;
+    fLogTimestamps = true;
+#endif
 
     if (mapArgs.count("-timeout"))
     {
@@ -706,6 +720,7 @@ bool AppInit2()
             InitError(_("Unable to sign checkpoint, wrong checkpointkey?\n"));
     }
 
+
     BOOST_FOREACH(string strDest, mapMultiArgs["-seednode"])
         AddOneShot(strDest);
 
@@ -918,11 +933,34 @@ bool AppInit2()
     printf("mapWallet.size() = %"PRIszu"\n",       pwalletMain->mapWallet.size());
     printf("mapAddressBook.size() = %"PRIszu"\n",  pwalletMain->mapAddressBook.size());
 
+    // **** PLUME ****
+    if(fPlumeEnabled)
+    {
+        uiInterface.InitMessage("Initializing Plume Core");
+        NewThread(InitializePlumeCore, NULL);
+    }
+    else
+    {
+        uiInterface.InitMessage("Plume Disabled");
+    }
+
+    // **** AI CORE ****
+    if(fAiCoreEnabled)
+    {
+        uiInterface.InitMessage("Initializing AI Core");
+    }
+    else
+    {
+        uiInterface.InitMessage("AI Core Disabled");
+    }
+
     if (!NewThread(StartNode, NULL))
         InitError(_("Error: could not start node"));
 
     if (fServer)
         NewThread(ThreadRPCServer, NULL);
+
+
 
     // ********************************************************* Step 12: finished
 

@@ -330,11 +330,23 @@ static const CRPCCommand vRPCCommands[] =
     { "smsginbox",              &smsginbox,              false,  false},
     { "smsgoutbox",             &smsgoutbox,             false,  false},
     { "smsgbuckets",            &smsgbuckets,            false,  false},
-    
-    
-    
-    
-    
+
+    { "plmpeerinfo",            &plmpeerinfo,            false,  false},
+    { "plmlistreswaiting",      &plmlistreswaiting,      false,  false},
+    { "plmlistproposals",       &plmlistproposals,       false,  false},
+    { "plmacceptproposal",      &plmacceptproposal,      false,  false},
+    { "plmlistplumes",          &plmlistplumes,          false,  false},
+    { "plmplumedetails",        &plmplumedetails,        false,  false},
+    { "plmcreateplume",         &plmcreateplume,         false,  false},
+    { "plmplumepreview",        &plmplumepreview,        false,  false},
+    { "plmaddrecord",           &plmaddrecord,           false,  false},
+    { "plmgetrecord",           &plmgetrecord,           false,  false},
+    { "plmgethashes",           &plmgethashes,           false,  false},
+    { "plmgetlasthashes",       &plmgetlasthashes,       false,  false},
+    { "aicreatenn",             &aicreatenn,             false,  false},
+    { "ailistactive",           &ailistactive,           false,  false},
+    { "aitrainnn",              &aitrainnn,              false,  false},
+    { "airunnn",                &airunnn,                false,  false},
 };
 
 CRPCTable::CRPCTable()
@@ -1264,6 +1276,21 @@ Array RPCConvertValues(const std::string &strMethod, const std::vector<std::stri
     if (strMethod == "keypoolrefill"          && n > 0) ConvertTo<int64_t>(params[0]);
     
     if (strMethod == "sendtostealthaddress"   && n > 1) ConvertTo<double>(params[1]);
+
+    if (strMethod == "plmcreateplume"         && n > 4) ConvertTo<double>(params[4]);
+    if (strMethod == "plmcreateplume"         && n > 5) ConvertTo<int>(params[5]);
+    if (strMethod == "plmcreateplume"         && n > 6) ConvertTo<bool>(params[6]);
+    if (strMethod == "plmplumepreview"        && n > 1) ConvertTo<int>(params[1]);
+    if (strMethod == "plmgetrecord"           && n > 1) ConvertTo<int>(params[1]);
+    if (strMethod == "plmgethashes"           && n > 1) ConvertTo<int>(params[1]);
+    if (strMethod == "plmgethashes"           && n > 2) ConvertTo<int>(params[2]);
+    if (strMethod == "plmgetlasthashes"       && n > 1) ConvertTo<int>(params[1]);
+    if (strMethod == "aicreatenn"             && n > 1) ConvertTo<int>(params[1]); //inputs
+    if (strMethod == "aicreatenn"             && n > 2) ConvertTo<int>(params[2]); //hidden
+    if (strMethod == "aicreatenn"             && n > 3) ConvertTo<int>(params[3]); //outputs
+    if (strMethod == "aicreatenn"             && n > 4) ConvertTo<int>(params[4]); //transferfunction
+    if (strMethod == "aicreatenn"             && n > 5) ConvertTo<int>(params[5]); //learningrule
+    if (strMethod == "aicreatenn"             && n > 7) ConvertTo<bool>(params[7]); //runlocal
 
     return params;
 }

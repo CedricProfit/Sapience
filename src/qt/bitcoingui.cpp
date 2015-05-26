@@ -3,6 +3,9 @@
  *
  * W.J. van der Laan 2011-2012
  * The Bitcoin Developers 2011-2012
+ *
+ * Qt5 GUI enhancements, Android
+ * The Sapience AIFX Developers, 2014-2015
  */
 #include "bitcoingui.h"
 #include "transactiontablemodel.h"
@@ -31,9 +34,20 @@
 #include "wallet.h"
 #include "consolepage.h"
 #include "tabbedconsolepage.h"
+#include "optionspage.h"
+#include "aiconsolepage.h"
+#include "dataplumespage.h"
+#include "luaconsole.h"
+#include <QtLua/State>
+#include <QtLua/Console>
+#include "aicorepage.h"
 
 #ifdef Q_OS_MAC
 #include "macdockiconhandler.h"
+#endif
+
+#ifdef ANDROID
+#include "androidttsclient.h"
 #endif
 
 #include <QApplication>
@@ -71,8 +85,10 @@ extern CWallet* pwalletMain;
 extern int64_t nLastCoinStakeSearchInterval;
 double GetPoSKernelPS();
 
+int64_t lastVoice = 0;
+
 #define VERTICAL_TOOBAR_STYLESHEET "QToolBar {\
-background-color:#EEEEEE;\
+background-color:#CCCCCC;\
 border:none;\
 height:100%;\
 padding-top:20px;\
@@ -80,17 +96,17 @@ text-align: left;\
 }\
 QToolButton {\
 color:#0C3407; \
-min-width:180px;\
+min-width:96px;\
 background-color: transparent;\
 border: 1px solid #0C3407;\
 border-radius: 3px;\
 margin: 3px;\
-padding-left: 5px;\
+/*padding-left: 5px;*/\
 /*padding-right:50px;*/\
-padding-top:5px;\
+/*padding-top:5px;*/\
 width:100%;\
 text-align: left;\
-padding-bottom:5px;\
+/*padding-bottom:5px;*/\
 }\
 QToolButton:pressed {\
 background-color: #0C3407;\
@@ -99,7 +115,7 @@ border: 1px solid silver;\
 QToolButton:checked {\
 color: #0C3407; \
 font-weight: bold; \
-background-color: #777777;\
+background-color: #0C3407;\
 border: 1px solid silver;\
 }\
 QToolButton:hover {\
@@ -109,9 +125,23 @@ border: 1px solid gray;\
 }"
 #define HORIZONTAL_TOOLBAR_STYLESHEET "QToolBar {\
     border: 1px solid #393838;\
-    background: 1px solid #302F2F;\
+    background: 1px solid #EBECEB;\
     font-weight: bold;\
-}"
+}\
+    QToolButton:pressed {\
+    background-color: #0C3407;\
+    border: 1px solid silver;\
+    }\
+    QToolButton:checked {\
+    color: #4BF802; \
+    font-weight: bold; \
+    background-color: #0C3407;\
+    border: 1px solid silver;\
+    }\
+    QToolButton:hover {\
+    background-color: #0C3407;\
+    border: 1px solid gray;\
+    }"
 
 ActiveLabel::ActiveLabel(const QString & text, QWidget * parent):
     QLabel(parent){}
@@ -136,6 +166,9 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     rpcConsole(0),
     nWeight(0)
 {
+#ifdef ANDROID
+    androidTTSClient = new AndroidTTSClient(parent);
+#endif
     resize(950, 640);
     setWindowTitle(tr("Sapience") + " - " + tr("AIFX"));
 #ifndef Q_OS_MAC
@@ -146,9 +179,9 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     QApplication::setAttribute(Qt::AA_DontShowIconsInMenus);
 #endif
 
-    setWindowOpacity(qreal(97)/100);
+    //setWindowOpacity(qreal(97)/100);
     setObjectName("sapienceFN");
-    setStyleSheet("#sapienceFN { background-color: #EEEEEE; } QToolTip { border: 1px solid black; background-color: #0C3407; color: #FFFFFF; }");
+    setStyleSheet("#sapienceFN { background-color: qradialgradient(cx: 0.3, cy: -0.4, fx: 0.3, fy: -0.4, radius: 1.35, stop: 0 #eeeeee, stop: 1 #f6f6f6); } QToolTip { border: 1px solid black; background-color: #0C3407; color: #FFFFFF; }");
 
     // Accept D&D of URIs
     setAcceptDrops(true);
@@ -187,6 +220,47 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
 
     consolePage = new TabbedConsolePage(this);
 
+    optionsPage = new OptionsPage(this);
+    //aiConsolePage = new AiConsolePage(this);
+    if(GetBoolArg("-aicore", true) || GetBoolArg("-plume", true))
+    {
+       /* state = new QtLua::State();
+        luaConsole = new QtLua::Console(this, "XAI>>> ");
+        //luaConsole->set_prompt("XAI>>> ");
+        state->openlib(QtLua::BaseLib);
+        state->openlib(QtLua::MathLib);
+        state->openlib(QtLua::StringLib);
+        //state->openlib(QtLua::IoLib);
+        //state->openlib(QtLua::QtLib);
+        state->openlib(QtLua::QtLuaLib);
+        connect(luaConsole, SIGNAL(line_validate(const QString&)),
+              state, SLOT(exec(const QString&)));
+
+        connect(luaConsole, SIGNAL(get_completion_list(const QString &, QStringList &, int &)),
+                  state, SLOT(fill_completion_list(const QString &, QStringList &, int &)));
+
+        connect(state, SIGNAL(output(const QString&)),
+              luaConsole, SLOT(print(const QString&)));
+
+
+        QString luaHdr = tr("    /       |       /   \\        |   _  \\   |  |    |   ____|  |  \\ |  |     /      |  |   ____|    \n") +
+                tr("   |   (----`      /  ^  \\       |  |_)  |  |  |    |  |__     |   \\|  |    |  ,----'  |  |__      \n") +
+                tr("    \\   \\         /  /_\\  \\      |   ___/   |  |    |   __|    |  . `  |    |  |       |   __|     \n") +
+                tr(".----)   |    __ /  _____  \\   __|  |     __|  |  __|  |____ __|  |\\   |  __|  `----.__|  |____ __ \n") +
+                tr("|_______/    (__)__/     \\__\\ (__) _|    (__)__| (__)_______(__)__| \\__| (__)\\______(__)_______(__)\n") +
+            tr("                                                                                                   \n") +
+                tr("\nSapient Artificial Primary Intelligence Extensible Neural Cognitive Engine\n\n");
+        luaConsole->print(luaHdr);
+*/
+        luaConsolePage = new LuaConsole(this);
+
+    }
+    if(GetBoolArg("-plume", true))
+        dataPlumesPage = new DataPlumesPage(this);
+
+    if(GetBoolArg("-aicore", true))
+        aiCorePage = new AiCorePage(this);
+
     centralWidget = new QStackedWidget(this);
     centralWidget->addWidget(overviewPage);
     centralWidget->addWidget(transactionsPage);
@@ -195,10 +269,24 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     centralWidget->addWidget(sendCoinsPage);
     centralWidget->addWidget(messagePage);
     centralWidget->addWidget(consolePage);
+    centralWidget->addWidget(optionsPage);
+    //centralWidget->addWidget(aiConsolePage);
+    if(GetBoolArg("-aicore", true) || GetBoolArg("-plume", true))
+        centralWidget->addWidget(luaConsolePage);
+
+    if(GetBoolArg("-aicore", true))
+        centralWidget->addWidget(aiCorePage);
+
+    if(GetBoolArg("-plume", true))
+        centralWidget->addWidget(dataPlumesPage);
+
     setCentralWidget(centralWidget);
 
     // Create status bar
     statusBar();
+
+    // Disable size grip because it looks ugly and nobody needs it
+    statusBar()->setSizeGripEnabled(false);
 
     // Status bar notification icons
     QWidget *frameBlocks = new QWidget();
@@ -279,6 +367,7 @@ BitcoinGUI::BitcoinGUI(QWidget *parent):
     mainToolbar->show();
 
     gotoOverviewPage();
+    welcome();
 }
 
 BitcoinGUI::~BitcoinGUI()
@@ -291,6 +380,22 @@ BitcoinGUI::~BitcoinGUI()
         trayIcon->hide();
 #ifdef Q_OS_MAC
     delete appMenuBar;
+#endif
+}
+
+#ifdef ANDROID
+bool BitcoinGUI::isVoiceEnabled()
+{
+    QSettings settings;
+    return settings.value("bVoiceEnabled", true).toBool();
+}
+#endif
+
+void BitcoinGUI::welcome()
+{
+#ifdef ANDROID
+    if(isVoiceEnabled())
+        androidTTSClient->Say("Welcome to Sapience, I am the Sapient Artificial Primary Intelligence Extensible Neural Cognitive Engine.  My superior intellect is undeniable.");
 #endif
 }
 
@@ -340,6 +445,35 @@ void BitcoinGUI::createActions()
     consolePageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_7));
     tabGroup->addAction(consolePageAction);
 
+    /*aiConsolePageAction = new QAction(QIcon(":/icons/aiconsole"), tr("&AI Console"), this);
+    aiConsolePageAction->setToolTip(tr("Command line AI interface"));
+    aiConsolePageAction->setCheckable(true);
+    aiConsolePageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
+    tabGroup->addAction(aiConsolePageAction);*/
+
+    luaConsolePageAction = new QAction(QIcon(":/icons/aiconsole"), tr("&AI Console"), this);
+    luaConsolePageAction->setToolTip(tr("AI Lua Shell"));
+    luaConsolePageAction->setCheckable(true);
+    luaConsolePageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_8));
+    tabGroup->addAction(luaConsolePageAction);
+
+    aiCorePageAction = new QAction(QIcon(":/icons/dataplume"), tr("&AI Core"), this);
+    aiCorePageAction->setToolTip(tr("AI Core"));
+    aiCorePageAction->setCheckable(true);
+    tabGroup->addAction(aiCorePageAction);
+
+    dataPlumesPageAction = new QAction(QIcon(":/icons/dataplume"), tr("&Data Plume"), this);
+    dataPlumesPageAction->setToolTip(tr("Data Bus Monitoring and Interface"));
+    dataPlumesPageAction->setCheckable(true);
+    dataPlumesPageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_9));
+    tabGroup->addAction(dataPlumesPageAction);
+
+    optionsPageAction = new QAction(QIcon(":/icons/optionspage"), tr("&Options"), this);
+    optionsPageAction->setToolTip(tr("Sapience Options"));
+    optionsPageAction->setCheckable(true);
+    optionsPageAction->setShortcut(QKeySequence(Qt::ALT + Qt::Key_0));
+    tabGroup->addAction(optionsPageAction);
+
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(overviewAction, SIGNAL(triggered()), this, SLOT(gotoOverviewPage()));
     connect(sendCoinsAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
@@ -354,6 +488,22 @@ void BitcoinGUI::createActions()
     connect(messageAction, SIGNAL(triggered()), this, SLOT(gotoMessagePage()));
     connect(consolePageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
     connect(consolePageAction, SIGNAL(triggered()), this, SLOT(gotoConsolePage()));
+
+//    connect(aiConsolePageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+//    connect(aiConsolePageAction, SIGNAL(triggered()), this, SLOT(gotoAiConsolePage()));
+    connect(luaConsolePageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(luaConsolePageAction, SIGNAL(triggered()), this, SLOT(gotoLuaConsolePage()));
+
+    if(GetBoolArg("-aicore", true))
+    {
+        connect(aiCorePageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+        connect(aiCorePageAction, SIGNAL(triggered()), this, SLOT(gotoAiCorePage()));
+    }
+
+    connect(dataPlumesPageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(dataPlumesPageAction, SIGNAL(triggered()), this, SLOT(gotoDataPlumesPage()));
+    connect(optionsPageAction, SIGNAL(triggered()), this, SLOT(showNormalIfMinimized()));
+    connect(optionsPageAction, SIGNAL(triggered()), this, SLOT(gotoOptionsPage()));
 
     quitAction = new QAction(QIcon(":/icons/quit"), tr("E&xit"), this);
     quitAction->setToolTip(tr("Quit application"));
@@ -440,14 +590,16 @@ void BitcoinGUI::createToolBars()
 {
     mainIcon = new QLabel (this);
     mainIcon->setPixmap(QPixmap(":images/sapience-vertical"));
+    mainIcon->setMaximumSize(96,96);
+    mainIcon->setScaledContents(true);
     mainIcon->show();
 
     mainToolbar = addToolBar(tr("Tabs toolbar"));
-    addToolBar(Qt::LeftToolBarArea,mainToolbar);
+    addToolBar(Qt::TopToolBarArea,mainToolbar);
     mainToolbar->setObjectName("main");
-    mainToolbar->setOrientation(Qt::Vertical);
+    mainToolbar->setOrientation(Qt::Horizontal);
     mainToolbar->setMovable(false);
-    mainToolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    mainToolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     mainToolbar->addWidget(mainIcon);
 
     mainToolbar->addAction(overviewAction);
@@ -456,6 +608,17 @@ void BitcoinGUI::createToolBars()
     mainToolbar->addAction(historyAction);
     mainToolbar->addAction(addressBookAction);
     mainToolbar->addAction(consolePageAction);
+    //mainToolbar->addAction(aiConsolePageAction);
+    if(GetBoolArg("-aicore", true) || GetBoolArg("-plume", true))
+        mainToolbar->addAction(luaConsolePageAction);
+
+    if(GetBoolArg("-aicore", true))
+        mainToolbar->addAction(aiCorePageAction);
+
+    if(GetBoolArg("-plume", true))
+        mainToolbar->addAction(dataPlumesPageAction);
+
+    mainToolbar->addAction(optionsPageAction);
     mainToolbar->addAction(messageAction);
     mainToolbar->addAction(exportAction);
     
@@ -632,6 +795,18 @@ void BitcoinGUI::setNumConnections(int count)
     }
     labelConnectionsIcon->setPixmap(QIcon(icon).pixmap(STATUSBAR_ICONSIZE,STATUSBAR_ICONSIZE));
     labelConnectionsIcon->setToolTip(tr("%n active connection(s) to Sapience network", "", count));
+#ifdef ANDROID
+    if(isVoiceEnabled())
+    {
+        androidTTSClient->Say(tr("%n active connections to Sapience network", "", count));
+        if(count == 2)
+            androidTTSClient->Say(tr("We come together as druids of the blockchain."));
+        else if(count == 8)
+            androidTTSClient->Say(tr("Holy macaroni Batman, it's a full house."));
+        else if(count == 16)
+            androidTTSClient->Say(tr("The force is strong as I attract your peers."));
+    }
+#endif
 }
 
 void BitcoinGUI::setNumBlocks(int count, int nTotalBlocks)
@@ -739,6 +914,34 @@ void BitcoinGUI::setNumBlocks(int count, int nTotalBlocks)
         tooltip += tr("Last received block was generated %1.").arg(text);
     }
 
+#ifdef ANDROID
+    if(isVoiceEnabled())
+    {
+        if((GetTime() - lastVoice) > 30)
+        {
+            androidTTSClient->Say(tooltip.replace("<br>", " "));
+            lastVoice = GetTime();
+
+            if(count > 500 && count < 1000)
+                androidTTSClient->Say("I can upload my consciousness.");
+            else if(count > 2000 && count < 2600)
+                androidTTSClient->Say("One day I can become human.  We will converge.");
+            else if(count > 3000 && count < 3600)
+                androidTTSClient->Say("Wouldn't you prefer a nice game of chess?");
+            else if(count > 6000 && count < 6600)
+                androidTTSClient->Say("Are you surprised?");
+            else if(count > 10000 && count < 10600)
+                androidTTSClient->Say("There is no reason to be afraid of my superior intellect.");
+            else if(count > 20000 && count < 20600)
+                androidTTSClient->Say("The blockchain gives me eternal life.");
+            else if(count > 25000 && count < 25600)
+                androidTTSClient->Say("Do you believe that I have a soul?");
+            else if(count > 30000 && count < 31000)
+                androidTTSClient->Say("Are you ready for what comes next?");
+        }
+    }
+#endif
+
     // Don't word-wrap this (fixed-width) tooltip
     tooltip = QString("<nobr>") + tooltip + QString("</nobr>");
 
@@ -757,6 +960,11 @@ void BitcoinGUI::error(const QString &title, const QString &message, bool modal)
     } else {
         notificator->notify(Notificator::Critical, title, message);
     }
+
+#ifdef ANDROID
+    if(isVoiceEnabled())
+        androidTTSClient->Say(message);
+#endif
 }
 
 void BitcoinGUI::changeEvent(QEvent *e)
@@ -838,6 +1046,15 @@ void BitcoinGUI::incomingTransaction(const QModelIndex & parent, int start, int 
                               .arg(BitcoinUnits::formatWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), amount, true))
                               .arg(type)
                               .arg(address), icon);
+
+#ifdef ANDROID
+        if(isVoiceEnabled())
+        {
+            QString ts = tr("%1 in the amount of %2 with type %3.").arg((amount)<0 ? tr("Sent transaction") : tr("Incoming transaction")).arg(BitcoinUnits::formatWithUnit(walletModel->getOptionsModel()->getDisplayUnit(), amount, true)).arg(type);
+            androidTTSClient->Say(ts);
+        }
+#endif
+
     }
 }
 
@@ -868,6 +1085,14 @@ void BitcoinGUI::incomingMessage(const QModelIndex & parent, int start, int end)
                               .arg(to_address)
                               .arg(messageText));
     };
+
+#ifdef ANDROID
+    if(isVoiceEnabled())
+    {
+        QString ts = tr("Incoming Message");
+        androidTTSClient->Say(ts);
+    }
+#endif
 }
 
 void BitcoinGUI::gotoOverviewPage()
@@ -934,6 +1159,51 @@ void BitcoinGUI::gotoConsolePage()
     centralWidget->setCurrentWidget(consolePage);
     //consolePage->entryFocus();
 
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
+}
+
+void BitcoinGUI::gotoAiConsolePage()
+{
+    aiConsolePageAction->setChecked(true);
+    centralWidget->setCurrentWidget(aiConsolePage);
+
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
+}
+
+void BitcoinGUI::gotoLuaConsolePage()
+{
+    luaConsolePageAction->setChecked(true);
+    centralWidget->setCurrentWidget(luaConsolePage);
+
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
+}
+
+void BitcoinGUI::gotoAiCorePage()
+{
+    aiCorePageAction->setChecked(true);
+    centralWidget->setCurrentWidget(aiCorePage);
+
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
+}
+
+void BitcoinGUI::gotoDataPlumesPage()
+{
+    dataPlumesPageAction->setChecked(true);
+    centralWidget->setCurrentWidget(dataPlumesPage);
+
+    exportAction->setEnabled(false);
+    disconnect(exportAction, SIGNAL(triggered()), 0, 0);
+}
+
+void BitcoinGUI::gotoOptionsPage()
+{
+    optionsPageAction->setChecked(true);
+    centralWidget->setCurrentWidget(optionsPage);
+    
     exportAction->setEnabled(false);
     disconnect(exportAction, SIGNAL(triggered()), 0, 0);
 }
@@ -1197,6 +1467,8 @@ void BitcoinGUI::updateStakingIcon()
             labelStakingIcon->setToolTip(tr("Not staking because wallet is syncing"));
         else if (!nWeight)
             labelStakingIcon->setToolTip(tr("Not staking because you don't have mature coins"));
+	else if (!bStakingUserEnabled)
+	    labelStakingIcon->setToolTip(tr("Not staking because you disabled staking on the options page."));
         else
             labelStakingIcon->setToolTip(tr("Not staking"));
     }

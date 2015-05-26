@@ -242,4 +242,22 @@ extern json_spirit::Value smsginbox(const json_spirit::Array& params, bool fHelp
 extern json_spirit::Value smsgoutbox(const json_spirit::Array& params, bool fHelp);
 extern json_spirit::Value smsgbuckets(const json_spirit::Array& params, bool fHelp);
 
+extern json_spirit::Value plmpeerinfo(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmlistreswaiting(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmlistproposals(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmlistplumes(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmacceptproposal(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmplumedetails(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmcreateplume(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmplumepreview(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmgethashes(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmaddrecord(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmgetrecord(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value plmgetlasthashes(const json_spirit::Array& params, bool fHelp);
+
+extern json_spirit::Value aicreatenn(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value aitrainnn(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value airunnn(const json_spirit::Array& params, bool fHelp);
+extern json_spirit::Value ailistactive(const json_spirit::Array& params, bool fHelp);
+
 #endif

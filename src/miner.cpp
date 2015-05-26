@@ -534,7 +534,7 @@ void StakeMiner(CWallet *pwallet)
 
     bool fTryToSync = true;
 
-    while (true)
+    while (true && bStakingUserEnabled)
     {
         if (fShutdown)
             return;

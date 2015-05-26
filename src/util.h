@@ -142,6 +142,11 @@ extern bool fTestNet;
 extern bool fNoListen;
 extern bool fLogTimestamps;
 extern bool fReopenDebugLog;
+extern bool fPlumeEnabled;
+extern bool fAiCoreEnabled;
+extern bool fAssetsEnabled;
+extern bool fIbtpEnabled;
+extern bool fBurstEnabled;
 
 void RandAddSeed();
 void RandAddSeedPerfmon();
@@ -392,6 +397,14 @@ int64_t GetArg(const std::string& strArg, int64_t nDefault);
  * @return command-line argument or default value
  */
 bool GetBoolArg(const std::string& strArg, bool fDefault=false);
+
+/**
+ * @brief GetDoubleArg
+ * @param strArg Argument to get (e.g. "-foo")
+ * @param nDefault (e.g. 0.001)
+ * @return command-line argument or default value
+ */
+double GetDoubleArg(const std::string& strArg, float nDefault);
 
 /**
  * Set an argument if it doesn't already have a value

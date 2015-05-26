@@ -45,6 +45,10 @@
         <file alias="staking_on">res/icons/staking_on.png</file>
         <file alias="smile">res/icons/smile-48.png</file>
         <file alias="sad">res/icons/sad-48.png</file>
+        <file alias="aiconsole">res/icons/aiconsole.png</file>
+        <file alias="dataplume">res/icons/dataplume.png</file>
+        <file alias="messages">res/icons/messages.png</file>
+        <file alias="optionspage">res/icons/options.png</file>
     </qresource>
     <qresource prefix="/images">
         <file alias="about">res/images/about.png</file>

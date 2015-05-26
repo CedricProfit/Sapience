@@ -7,6 +7,9 @@
 
 #include <stdint.h>
 
+#include <QtLua/State>
+#include <QtLua/Console>
+
 class TransactionTableModel;
 class ClientModel;
 class WalletModel;
@@ -21,6 +24,12 @@ class Notificator;
 class RPCConsole;
 class ConsolePage;
 class TabbedConsolePage;
+class AndroidTTSClient;
+class OptionsPage;
+class AiConsolePage;
+class DataPlumesPage;
+class LuaConsole;
+class AiCorePage;
 
 QT_BEGIN_NAMESPACE
 class QLabel;
@@ -58,7 +67,10 @@ class BitcoinGUI : public QMainWindow
 public:
     explicit BitcoinGUI(QWidget *parent = 0);
     ~BitcoinGUI();
-
+    void welcome();
+#ifdef ANDROID
+    bool isVoiceEnabled();
+#endif
     /** Set the client model.
         The client model represents the part of the core that communicates with the P2P network, and is wallet-agnostic.
     */
@@ -81,6 +93,9 @@ protected:
     void dropEvent(QDropEvent *event);
 
 private:
+#ifdef ANDROID
+    AndroidTTSClient *androidTTSClient;
+#endif
     ClientModel *clientModel;
     WalletModel *walletModel;
     MessageModel *messageModel;
@@ -95,6 +110,13 @@ private:
     SendCoinsDialog *sendCoinsPage;
     SignVerifyMessageDialog *signVerifyMessageDialog;
     TabbedConsolePage *consolePage;
+    OptionsPage *optionsPage;
+    AiConsolePage *aiConsolePage;
+    DataPlumesPage *dataPlumesPage;
+    LuaConsole *luaConsolePage;
+    AiCorePage *aiCorePage;
+    //QtLua::State *state;
+    //QtLua::Console *luaConsole;
 
     ActiveLabel *labelEncryptionIcon;
     QLabel *labelStakingIcon;
@@ -128,6 +150,11 @@ private:
     QAction *aboutQtAction;
     QAction *openRPCConsoleAction;
     QAction *consolePageAction;
+    QAction *optionsPageAction;
+    QAction *aiConsolePageAction;
+    QAction *dataPlumesPageAction;
+    QAction *luaConsolePageAction;
+    QAction *aiCorePageAction;
 
     QSystemTrayIcon *trayIcon;
     Notificator *notificator;
@@ -189,6 +216,11 @@ private slots:
     void gotoMessagePage();
     /** Switch to the console page */
     void gotoConsolePage();
+    void gotoOptionsPage();
+    void gotoAiConsolePage();
+    void gotoDataPlumesPage();
+    void gotoLuaConsolePage();
+    void gotoAiCorePage();
 
     /** Show Sign/Verify Message dialog and switch to sign message tab */
     void gotoSignMessageTab(QString addr = "");

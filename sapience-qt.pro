@@ -1,10 +1,12 @@
 TEMPLATE = app
-TARGET = sapience-qt
-VERSION = 1.1.1.0
+TARGET = "Sapience"
+VERSION = 1.2.0.0
 INCLUDEPATH += src src/json src/qt src/qt/plugins/mrichtexteditor
 DEFINES += QT_GUI BOOST_THREAD_USE_LIB BOOST_SPIRIT_THREADSAFE
 CONFIG += no_include_pwd
-CONFIG += thread
+CONFIG += thread static
+QT += core gui
+QT += uitools
 
 greaterThan(QT_MAJOR_VERSION, 4) {
     QT += widgets
@@ -24,6 +26,15 @@ greaterThan(QT_MAJOR_VERSION, 4) {
 OBJECTS_DIR = build
 MOC_DIR = build
 UI_DIR = build
+
+linux {
+    LUA_INCLUDE_PATH=../../deps/lua/include
+    LUA_LIB_PATH=../../deps/lua/lib
+    QTLUA_INCLUDE_PATH=../../deps/libqtlua/include
+    QTLUA_LIB_PATH=../../deps/libqtlua/lib
+    MINIUPNPC_INCLUDE_PATH=/usr/include/miniupnpc
+    MINIUPNPC_LIB_PATH=/usr/lib
+}
 
 build_macosx64 {
     QMAKE_TARGET_BUNDLE_PREFIX = co.sapience
@@ -68,7 +79,7 @@ QMAKE_LFLAGS *= -fstack-protector-all --param ssp-buffer-size=1
 # This can be enabled for Windows, when we switch to MinGW >= 4.4.x.
 }
 # for extra security on Windows: enable ASLR and DEP via GCC linker flags
-win32:QMAKE_LFLAGS *= -Wl,--dynamicbase -Wl,--nxcompat
+win32:QMAKE_LFLAGS *= -Wl,--dynamicbase -Wl,--nxcompat -static
 win32:QMAKE_LFLAGS += -static-libgcc -static-libstdc++
 
 # use: qmake "USE_QRCODE=1"
@@ -250,7 +261,34 @@ HEADERS += src/qt/bitcoingui.h \
     src/qt/plugins/mrichtexteditor/mrichtextedit.h \
     src/qt/qvalidatedtextedit.h \
     src/qt/consolepage.h \
-    src/qt/tabbedconsolepage.h
+    src/qt/tabbedconsolepage.h \
+    src/qt/optionspage.h \
+    src/qt/aiconsolepage.h \
+    src/qt/dataplumespage.h \
+    src/qt/createdataplumedialog.h \
+    src/qt/plumedetailsdialog.h \
+    src/qt/previewdatadialog.h \
+    src/qt/addrecorddialog.h \
+    src/plume/dht.h \
+    src/plume/dataplume.h \
+    src/plume/slave.h \
+    src/plume/plumepeer.h \
+    src/plume/plumeheader.h \
+    src/plume/plumecore.h \
+    src/plume/dhtmessages.h \
+    src/plume/slavemessages.h \
+    src/plume/plumelocaldb.h \
+    src/plume/dhtvalue.h \    
+    src/plume/rpcplume.h \
+    src/plume/plumeapi.h \
+    src/ailib/ailib.h \
+    src/qt/luaconsole.h \
+    src/ibtp.h \
+    src/qt/aicorepage.h \
+    src/qt/selectplumedialog.h \
+    src/qt/createneuralnetworkdialog.h \
+    src/qt/trainneuralnetworkdialog.h \
+    src/qt/runneuralnetworkdialog.h 
 
 SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/qt/transactiontablemodel.cpp \
@@ -331,7 +369,34 @@ SOURCES += src/qt/bitcoin.cpp src/qt/bitcoingui.cpp \
     src/stealth.cpp \
     src/blake.c \
     src/qt/consolepage.cpp \
-    src/qt/tabbedconsolepage.cpp
+    src/qt/tabbedconsolepage.cpp \
+    src/qt/optionspage.cpp \
+    src/qt/aiconsolepage.cpp \
+    src/qt/dataplumespage.cpp \
+    src/qt/createdataplumedialog.cpp \
+    src/qt/plumedetailsdialog.cpp \
+    src/qt/previewdatadialog.cpp \
+    src/qt/addrecorddialog.cpp \
+    src/plume/dht.cpp \
+    src/plume/dataplume.cpp \
+    src/plume/slave.cpp \
+    src/plume/plumepeer.cpp \
+    src/plume/plumeheader.cpp \
+    src/plume/plumecore.cpp \
+    src/plume/dhtmessages.cpp \
+    src/plume/slavemessages.cpp \
+    src/plume/plumelocaldb.cpp \
+    src/plume/dhtvalue.cpp \    
+    src/plume/rpcplume.cpp \
+    src/plume/plumeapi.cpp \
+    src/ailib/ailib.cpp \
+    src/qt/luaconsole.cpp \
+    src/ibtp.cpp \
+    src/qt/aicorepage.cpp \
+    src/qt/selectplumedialog.cpp \
+    src/qt/createneuralnetworkdialog.cpp \
+    src/qt/trainneuralnetworkdialog.cpp \
+    src/qt/runneuralnetworkdialog.cpp 
 
 RESOURCES += \
     src/qt/bitcoin.qrc \
@@ -355,7 +420,20 @@ FORMS += \
     src/qt/forms/sendmessagesdialog.ui \
     src/qt/plugins/mrichtexteditor/mrichtextedit.ui \
     src/qt/forms/consolepage.ui \
-    src/qt/forms/tabbedconsolepage.ui
+    src/qt/forms/tabbedconsolepage.ui \
+    src/qt/forms/optionspage.ui \
+    src/qt/forms/aiconsolepage.ui \
+    src/qt/forms/dataplumespage.ui \
+    src/qt/forms/createdataplumedialog.ui \
+    src/qt/forms/plumedetailsdialog.ui \
+    src/qt/forms/previewdatadialog.ui \
+    src/qt/forms/addrecorddialog.ui \
+    src/qt/forms/luaconsole.ui \
+    src/qt/forms/aicorepage.ui \
+    src/qt/forms/selectplumedialog.ui \
+    src/qt/forms/createneuralnetworkdialog.ui \
+    src/qt/forms/trainneuralnetworkdialog.ui \
+    src/qt/forms/runneuralnetworkdialog.ui
 
 contains(USE_QRCODE, 1) {
 HEADERS += src/qt/qrcodedialog.h
@@ -444,11 +522,18 @@ macx:QMAKE_LFLAGS_THREAD += -pthread
 macx:QMAKE_CXXFLAGS_THREAD += -pthread
 
 # Set libraries and includes at end, to use platform-defined defaults if not overridden
-INCLUDEPATH += $$BOOST_INCLUDE_PATH $$BDB_INCLUDE_PATH $$OPENSSL_INCLUDE_PATH $$QRENCODE_INCLUDE_PATH
+INCLUDEPATH += $$LUA_INCLUDE_PATH 
+INCLUDEPATH += src/qt/libqtlua
+INCLUDEPATH += src/qt/libqtlua/internal
+INCLUDEPATH += src/qt/libqtlua/QtLua
+
+INCLUDEPATH += $$QTLUA_INCLUDE_PATH $$BOOST_INCLUDE_PATH $$BDB_INCLUDE_PATH $$OPENSSL_INCLUDE_PATH $$QRENCODE_INCLUDE_PATH
+LIBS += $$join(LUA_LIB_PATH,,-L,) $$join(QTLUA_LIB_PATH,,-L,)
 LIBS += $$join(BOOST_LIB_PATH,,-L,) $$join(BDB_LIB_PATH,,-L,) $$join(OPENSSL_LIB_PATH,,-L,) $$join(QRENCODE_LIB_PATH,,-L,)
 LIBS += -lssl -lcrypto -ldb_cxx$$BDB_LIB_SUFFIX
 # -lgdi32 has to happen after -lcrypto (see  #681)
 windows:LIBS += -lws2_32 -lshlwapi -lmswsock -lole32 -loleaut32 -luuid -lgdi32
+LIBS += -llua -lqtlua 
 LIBS += -lboost_system$$BOOST_LIB_SUFFIX -lboost_filesystem$$BOOST_LIB_SUFFIX -lboost_program_options$$BOOST_LIB_SUFFIX -lboost_thread$$BOOST_THREAD_LIB_SUFFIX
 windows:LIBS += -lboost_chrono$$BOOST_LIB_SUFFIX
 

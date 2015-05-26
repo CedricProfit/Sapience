@@ -1,0 +1,403 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DataPlumesPage</class>
+ <widget class="QWidget" name="DataPlumesPage">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>573</width>
+    <height>392</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">#OverviewPage { color: #0C3407; } QToolTip { border: 1px solid black; background-color: #0C3407; color: #FFFFFF; }</string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout" stretch="1">
+   <item>
+    <layout class="QVBoxLayout" name="verticalLayout_2">
+     <item>
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="currentIndex">
+        <number>0</number>
+       </property>
+       <widget class="QWidget" name="peersTab">
+        <attribute name="title">
+         <string>Peers</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout">
+           <item>
+            <widget class="QTableWidget" name="peersTableWidget">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <property name="gridStyle">
+              <enum>Qt::DashLine</enum>
+             </property>
+             <attribute name="horizontalHeaderCascadingSectionResizes">
+              <bool>true</bool>
+             </attribute>
+             <attribute name="horizontalHeaderDefaultSectionSize">
+              <number>130</number>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>IP</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Client</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Connected</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Up (KB)</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Down (KB)</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Use Count</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Total DHT</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>% Available</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Bytes Allocated</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Bytes Available</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Last Activity</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Id Hash</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="plumesTab">
+        <attribute name="title">
+         <string>Data Plumes</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_5">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <item>
+            <widget class="QTableWidget" name="dataPlumesTableWidget">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <property name="gridStyle">
+              <enum>Qt::DashLine</enum>
+             </property>
+             <column>
+              <property name="text">
+               <string>Plume Name</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Plume Type</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Last Seen</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Status</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Data Type</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string># Records</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string># Nodes</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string># Nodes Connected</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Plume Id</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_2">
+             <item>
+              <widget class="QPushButton" name="createPlumeButton">
+               <property name="text">
+                <string>&amp;Create Plume</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="detailsButton">
+               <property name="text">
+                <string>Plume &amp;Details</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="previewDataButton">
+               <property name="text">
+                <string>&amp;Preview Data</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="addRecordButton">
+               <property name="text">
+                <string>&amp;Add Record</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>40</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="messagesTab">
+        <attribute name="title">
+         <string>Messages</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <item>
+            <widget class="QTableWidget" name="messagesTableWidget">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::NoSelection</enum>
+             </property>
+             <property name="gridStyle">
+              <enum>Qt::DotLine</enum>
+             </property>
+             <attribute name="horizontalHeaderCascadingSectionResizes">
+              <bool>true</bool>
+             </attribute>
+             <attribute name="horizontalHeaderDefaultSectionSize">
+              <number>150</number>
+             </attribute>
+             <attribute name="verticalHeaderVisible">
+              <bool>false</bool>
+             </attribute>
+             <column>
+              <property name="text">
+               <string>Time</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Type</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Peer</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Message</string>
+              </property>
+             </column>
+             <column>
+              <property name="text">
+               <string>Size (bytes)</string>
+              </property>
+             </column>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="logTab">
+        <attribute name="title">
+         <string>Log</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="0" column="0">
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <item>
+            <widget class="QListWidget" name="logListWidget">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::NoSelection</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="settingsTab">
+        <attribute name="title">
+         <string>Settings</string>
+        </attribute>
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_3">
+           <property name="text">
+            <string>Log Buffer</string>
+           </property>
+           <property name="buddy">
+            <cstring>logBufferSpinBox</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QSpinBox" name="messagesBufferSpinBox">
+           <property name="maximum">
+            <number>32000</number>
+           </property>
+           <property name="value">
+            <number>500</number>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Messages Buffer</string>
+           </property>
+           <property name="buddy">
+            <cstring>messagesBufferSpinBox</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QSpinBox" name="announceSpinBox">
+           <property name="maximum">
+            <number>300</number>
+           </property>
+           <property name="value">
+            <number>10</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QSpinBox" name="logBufferSpinBox">
+           <property name="maximum">
+            <number>32000</number>
+           </property>
+           <property name="value">
+            <number>500</number>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Announce Interval (s)</string>
+           </property>
+           <property name="buddy">
+            <cstring>announceSpinBox</cstring>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -62,6 +62,30 @@ Value getpeerinfo(const Array& params, bool fHelp)
         obj.push_back(Pair("startingheight", stats.nStartingHeight));
         obj.push_back(Pair("banscore", stats.nMisbehavior));
 
+        std::string svcDesc = "";
+        if(stats.nServices & NODE_NETWORK)
+            svcDesc = "NETWORK";
+
+        if(stats.nServices & NODE_AI)
+            svcDesc += " AI";
+
+        if(stats.nServices & NODE_ASSETS)
+            svcDesc += " ASSETS";
+
+        if(stats.nServices & NODE_BURST)
+            svcDesc += " BURST";
+
+        if(stats.nServices & NODE_IBTP)
+            svcDesc += " IBTP";
+
+        if(stats.nServices & NODE_PLUME)
+            svcDesc += " PLUME";
+
+        obj.push_back(Pair("servicesdesc", svcDesc));
+
+        if(stats.fInbound)
+            obj.push_back(Pair("blockchain", stats.sBlockchain));
+
         ret.push_back(obj);
     }
 

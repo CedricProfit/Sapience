@@ -30,6 +30,10 @@ namespace boost {
 #include <openssl/rand.h>
 #include <stdarg.h>
 
+#ifdef ANDROID
+#include <android/log.h>
+#endif
+
 #ifdef WIN32
 #ifdef _MSC_VER
 #pragma warning(disable:4786)
@@ -76,6 +80,12 @@ bool fNoListen = false;
 bool fLogTimestamps = false;
 CMedianFilter<int64_t> vTimeOffsets(200,0);
 bool fReopenDebugLog = false;
+
+bool fPlumeEnabled = false;
+bool fAiCoreEnabled = false;
+bool fAssetsEnabled = false;
+bool fIbtpEnabled = false;
+bool fBurstEnabled = false;
 
 // Init OpenSSL library multithreading support
 static CCriticalSection** ppmutexOpenSSL;
@@ -200,6 +210,11 @@ uint256 GetRandHash()
 
 inline int OutputDebugStringF(const char* pszFormat, ...)
 {
+    //va_list arg_ptr;
+    //va_start(arg_ptr, pszFormat);
+    //__android_log_print(ANDROID_LOG_INFO, "Sapience", pszFormat, arg_ptr);
+    //va_end(arg_ptr);
+
     int ret = 0;
     if (fPrintToConsole)
     {
@@ -240,18 +255,26 @@ inline int OutputDebugStringF(const char* pszFormat, ...)
                     setbuf(fileout, NULL); // unbuffered
             }
 
+            bool addNewLine = false;
             // Debug print useful for profiling
             if (fLogTimestamps && fStartedNewLine)
                 fprintf(fileout, "%s ", DateTimeStrFormat("%x %H:%M:%S", GetTime()).c_str());
             if (pszFormat[strlen(pszFormat) - 1] == '\n')
                 fStartedNewLine = true;
             else
+            {
+                addNewLine = true;
                 fStartedNewLine = false;
+            }
 
             va_list arg_ptr;
             va_start(arg_ptr, pszFormat);
             ret = vfprintf(fileout, pszFormat, arg_ptr);
             va_end(arg_ptr);
+#ifndef ANDROID
+            if(addNewLine)
+                fprintf(fileout, "\n");
+#endif
         }
     }
 
@@ -570,6 +593,17 @@ bool GetBoolArg(const std::string& strArg, bool fDefault)
         return (atoi(mapArgs[strArg]) != 0);
     }
     return fDefault;
+}
+
+double GetDoubleArg(const std::string& strArg, float nDefault)
+{
+    if(mapArgs.count(strArg))
+    {
+        if(mapArgs[strArg].empty())
+            return nDefault;
+        return atof(mapArgs[strArg].c_str());
+    }
+    return nDefault;
 }
 
 bool SoftSetArg(const std::string& strArg, const std::string& strValue)
@@ -998,7 +1032,11 @@ boost::filesystem::path GetDefaultDataDir()
     return GetSpecialFolderPath(CSIDL_APPDATA) / "Sapience";
 #else
     fs::path pathRet;
+#ifdef ANDROID
+    char* pszHome = getenv("EXTERNAL_STORAGE");
+#else
     char* pszHome = getenv("HOME");
+#endif
     if (pszHome == NULL || strlen(pszHome) == 0)
         pathRet = fs::path("/");
     else
@@ -1010,7 +1048,12 @@ boost::filesystem::path GetDefaultDataDir()
     return pathRet / "Sapience";
 #else
     // Unix
+#ifdef ANDROID
+    return pathRet / "Sapience";
+#else
     return pathRet / ".sapience";
+#endif
+
 #endif
 #endif
 }

@@ -9,22 +9,25 @@
 #include "strlcpy.h"
 #include "addrman.h"
 #include "ui_interface.h"
+#include "plume/plumecore.h"
+
+#include "ifaddrs.h"
 
 #ifdef WIN32
 #include <string.h>
 #endif
 
 #ifdef USE_UPNP
-#include <miniupnpc/miniwget.h>
-#include <miniupnpc/miniupnpc.h>
-#include <miniupnpc/upnpcommands.h>
-#include <miniupnpc/upnperrors.h>
+#include <miniwget.h>
+#include <miniupnpc.h>
+#include <upnpcommands.h>
+#include <upnperrors.h>
 #endif
 
 using namespace std;
 using namespace boost;
 
-static const int MAX_OUTBOUND_CONNECTIONS = 16;
+static const int MAX_OUTBOUND_CONNECTIONS = 64;
 
 void ThreadMessageHandler2(void* parg);
 void ThreadSocketHandler2(void* parg);
@@ -47,7 +50,7 @@ struct LocalServiceInfo {
 //
 bool fDiscover = true;
 bool fUseUPnP = false;
-uint64_t nLocalServices = NODE_NETWORK;
+uint64_t nLocalServices = NODE_NETWORK | NODE_PLUME | NODE_AI;
 static CCriticalSection cs_mapLocalHost;
 static boost::unordered_map<CNetAddr, LocalServiceInfo, CNetAddrHasher, CNetAddrHasher> mapLocalHost;
 static bool vfReachable[NET_MAX] = {};
@@ -627,6 +630,8 @@ void CNode::copyStats(CNodeStats &stats)
     X(fInbound);
     X(nStartingHeight);
     X(nMisbehavior);
+    X(sBlockchain);
+    X(fForeignNode);
 
     // It is common for nodes with good ping times to suddenly become lagged,
     // due to a new block arriving or other large transfer.
@@ -901,7 +906,7 @@ void ThreadSocketHandler2(void* parg)
         //
         struct timeval timeout;
         timeout.tv_sec  = 0;
-        timeout.tv_usec = 50000; // frequency to poll pnode->vSend
+        timeout.tv_usec = 10000; //50000; // frequency to poll pnode->vSend
 
         fd_set fdsetRecv;
         fd_set fdsetSend;
@@ -989,7 +994,7 @@ void ThreadSocketHandler2(void* parg)
                 if (nErr != WSAEWOULDBLOCK)
                     printf("socket error accept failed: %d\n", nErr);
             }
-            else if (nInbound >= GetArg("-maxconnections", 125) - MAX_OUTBOUND_CONNECTIONS)
+            else if (nInbound >= GetArg("-maxconnections", 512) - MAX_OUTBOUND_CONNECTIONS)
             {
                 closesocket(hSocket);
             }
@@ -1440,6 +1445,25 @@ void static ProcessOneShot()
     }
 }
 
+void static ThreadPlumeProcess(void* parg)
+{
+    printf("ThreadPlumeProcess started\n");
+    try
+    {
+        vnThreadsRunning[THREAD_PLUME_PROCESS]++;
+        PlumeProcess();
+        vnThreadsRunning[THREAD_PLUME_PROCESS]--;
+    }
+    catch (std::exception& e) {
+        vnThreadsRunning[THREAD_PLUME_PROCESS]--;
+        PrintException(&e, "ThreadPlumeProcess()");
+    } catch (...) {
+        vnThreadsRunning[THREAD_PLUME_PROCESS]--;
+        PrintException(NULL, "ThreadPlumeProcess()");
+    }
+    printf("ThreadPlumeProcess exiting, %d threads remaining\n", vnThreadsRunning[THREAD_PLUME_PROCESS]);
+}
+
 void static ThreadStakeMiner(void* parg)
 {
     printf("ThreadStakeMiner started\n");
@@ -1476,12 +1500,12 @@ void ThreadOpenConnections2(void* parg)
                 OpenNetworkConnection(addr, NULL, strAddr.c_str());
                 for (int i = 0; i < 10 && i < nLoop; i++)
                 {
-                    MilliSleep(500);
+                    MilliSleep(100);
                     if (fShutdown)
                         return;
                 }
             }
-            MilliSleep(500);
+            MilliSleep(100);
         }
     }
 
@@ -1492,7 +1516,7 @@ void ThreadOpenConnections2(void* parg)
         ProcessOneShot();
 
         vnThreadsRunning[THREAD_OPENCONNECTIONS]--;
-        MilliSleep(500);
+        MilliSleep(200);
         vnThreadsRunning[THREAD_OPENCONNECTIONS]++;
         if (fShutdown)
             return;
@@ -1965,6 +1989,26 @@ void StartNode(void* parg)
     // Make this thread recognisable as the startup thread
     RenameThread("sapience-start");
 
+    // Set our local services appropriately
+    nLocalServices = NODE_NETWORK;
+    if(GetBoolArg("-plume", true))
+        nLocalServices |= NODE_PLUME;
+
+    if(GetBoolArg("-aicore", true))
+        nLocalServices |= NODE_AI;
+
+    if(GetBoolArg("-assets", true))
+        nLocalServices |= NODE_ASSETS;
+
+    if(GetBoolArg("-burst", true))
+        nLocalServices |= NODE_BURST;
+
+    if(GetBoolArg("-xainet", true))
+        nLocalServices |= NODE_IBTP;
+
+    //if(GetBoolArg("-smash", true))
+    //    nLocalServices |= NODE_SMASH;
+
     if (semOutbound == NULL) {
         // initialize semaphore
         int nMaxOutbound = min(MAX_OUTBOUND_CONNECTIONS, (int)GetArg("-maxconnections", 125));
@@ -2011,11 +2055,25 @@ void StartNode(void* parg)
         printf("Error; NewThread(ThreadDumpAddress) failed\n");
 
     // Mine proof-of-stake blocks in the background
-    if (!GetBoolArg("-staking", true))
+    if (!GetBoolArg("-staking", true) || !bStakingUserEnabled)
         printf("Staking disabled\n");
     else
         if (!NewThread(ThreadStakeMiner, pwalletMain))
             printf("Error: NewThread(ThreadStakeMiner) failed\n");
+
+    if(!GetBoolArg("-plume", true))
+        printf("Plume disabled\n");
+    else
+        if(!NewThread(ThreadPlumeProcess, NULL))
+            printf("Error: NewThread(ThreadPlumeProcess) failed\n");
+
+    if(!GetBoolArg("-aicore", true))
+        printf("AI Core disabled\n");
+    else
+    {
+        printf("AI Core enabled, starting core thread\n");
+    }
+
 }
 
 bool StopNode()
@@ -2050,6 +2108,7 @@ bool StopNode()
     if (vnThreadsRunning[THREAD_ADDEDCONNECTIONS] > 0) printf("ThreadOpenAddedConnections still running\n");
     if (vnThreadsRunning[THREAD_DUMPADDRESS] > 0) printf("ThreadDumpAddresses still running\n");
     if (vnThreadsRunning[THREAD_STAKE_MINER] > 0) printf("ThreadStakeMiner still running\n");
+    if (vnThreadsRunning[THREAD_PLUME_PROCESS] > 0) printf("ThreadPlumeProcess still running\n");
     while (vnThreadsRunning[THREAD_MESSAGEHANDLER] > 0 || vnThreadsRunning[THREAD_RPCHANDLER] > 0)
         MilliSleep(20);
     MilliSleep(50);

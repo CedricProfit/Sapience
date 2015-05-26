@@ -3,6 +3,7 @@
 // Distributed under the MIT/X11 software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include "ibtp.h"
 #include "alert.h"
 #include "checkpoints.h"
 #include "db.h"
@@ -12,6 +13,8 @@
 #include "ui_interface.h"
 #include "kernel.h"
 #include "smessage.h"
+#include "plume/dht.h"
+#include "plume/plumecore.h"
 #include <boost/algorithm/string/replace.hpp>
 #include <boost/filesystem.hpp>
 #include <boost/filesystem/fstream.hpp>
@@ -20,9 +23,13 @@
 using namespace std;
 using namespace boost;
 
+CIbtp ibtp;
+
 //
 // Global state
 //
+bool bStakingUserEnabled = true;
+bool bPlumeUserEnabled = true;
 
 CCriticalSection cs_setpwalletRegistered;
 set<CWallet*> setpwalletRegistered;
@@ -2759,6 +2766,8 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         return true;
     }
 
+    PlumeMsgNotify(nTimeReceived, "Receive", pfrom->addrName, strCommand, vRecv.size());
+
     if (strCommand == "version")
     {
         // Each connection can only send one version message
@@ -2773,7 +2782,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         CAddress addrFrom;
         uint64_t nNonce = 1;
         vRecv >> pfrom->nVersion >> pfrom->nServices >> nTime >> addrMe;
-        if (pfrom->nVersion < MIN_PEER_PROTO_VERSION)
+        if (!pfrom->fForeignNode && pfrom->nVersion < MIN_PEER_PROTO_VERSION)
         {
             // disconnect from peers older than this proto version
             printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
@@ -2781,7 +2790,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             return false;
         }
 
-        if (pfrom->nVersion == 10300)
+        if (!pfrom->fForeignNode && pfrom->nVersion == 10300)
             pfrom->nVersion = 300;
         if (!vRecv.empty())
             vRecv >> addrFrom >> nNonce;
@@ -2809,7 +2818,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             addrSeenByPeer = addrMe;
 
         // Be shy and don't send version until we hear
-        if (pfrom->fInbound)
+        //if (pfrom->fInbound)
             pfrom->PushVersion();
 
         pfrom->fClient = !(pfrom->nServices & NODE_NETWORK);
@@ -2848,7 +2857,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
         // Ask the first connected node for block updates
         static int nAskedForBlocks = 0;
-        if (!pfrom->fClient && !pfrom->fOneShot &&
+        if (!pfrom->fForeignNode && !pfrom->fClient && !pfrom->fOneShot &&
             (pfrom->nStartingHeight > (nBestHeight - 144)) &&
             (pfrom->nVersion < NOBLKS_VERSION_START ||
              pfrom->nVersion >= NOBLKS_VERSION_END) &&
@@ -2859,6 +2868,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         }
 
         // Relay alerts
+        if(!pfrom->fForeignNode)
         {
             LOCK(cs_mapAlerts);
             BOOST_FOREACH(PAIRTYPE(const uint256, CAlert)& item, mapAlerts)
@@ -2866,6 +2876,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         }
 
         // Relay sync-checkpoint
+        if(!pfrom->fForeignNode)
         {
             LOCK(Checkpoints::cs_hashSyncCheckpoint);
             if (!Checkpoints::checkpointMessage.IsNull())
@@ -2874,7 +2885,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
 
         pfrom->fSuccessfullyConnected = true;
 
-        printf("receive version message: version %d, blocks=%d, us=%s, them=%s, peer=%s\n", pfrom->nVersion, pfrom->nStartingHeight, addrMe.ToString().c_str(), addrFrom.ToString().c_str(), pfrom->addr.ToString().c_str());
+        printf("receive version message: version %d, blocks=%d, us=%s, them=%s, peer=%s, blockchain=%s\n", pfrom->nVersion, pfrom->nStartingHeight, addrMe.ToString().c_str(), addrFrom.ToString().c_str(), pfrom->addr.ToString().c_str(), pfrom->sBlockchain.c_str());
 
         cPeerBlockCounts.input(pfrom->nStartingHeight);
 
@@ -2898,10 +2909,19 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "addr")
+    else if (strCommand == "addr" || strCommand == "addrc")
     {
         vector<CAddress> vAddr;
-        vRecv >> vAddr;
+        if(strCommand == "addr")
+            vRecv >> vAddr;
+        else
+        {
+            std::string sComp;
+            vRecv >> sComp;
+            std::string uncomp = UncompressData(sComp);
+            CDataStream ssValue(uncomp.data(), uncomp.data() + uncomp.size(), SER_NETWORK, CLIENT_VERSION);
+            ssValue >> vAddr;
+        }
 
         // Don't want addr from older versions unless seeding
         if (pfrom->nVersion < CADDR_TIME_VERSION && addrman.size() > 1000)
@@ -2964,10 +2984,21 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             pfrom->fDisconnect = true;
     }
 
-    else if (strCommand == "inv")
+    else if (!pfrom->fForeignNode && (strCommand == "inv" || strCommand == "invc"))
     {
         vector<CInv> vInv;
-        vRecv >> vInv;
+
+        if(strCommand == "inv")
+            vRecv >> vInv;
+        else if(strCommand == "invc")
+        {
+            std::string sComp;
+            vRecv >> sComp;
+            std::string uncomp = UncompressData(sComp);
+            CDataStream ssValue(uncomp.data(), uncomp.data() + uncomp.size(), SER_NETWORK, CLIENT_VERSION);
+            ssValue >> vInv;
+        }
+
         if (vInv.size() > MAX_INV_SZ)
         {
             pfrom->Misbehaving(20);
@@ -3014,10 +3045,21 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "getdata")
+    else if (!pfrom->fForeignNode && (strCommand == "getdata" || strCommand == "getdatac"))
     {
         vector<CInv> vInv;
-        vRecv >> vInv;
+
+        if(strCommand == "getdata")
+            vRecv >> vInv;
+        else if(strCommand == "getdatac")
+        {
+            std::string sComp;
+            vRecv >> sComp;
+            std::string uncomp = UncompressData(sComp);
+            CDataStream ssValue(uncomp.data(), uncomp.data() + uncomp.size(), SER_NETWORK, CLIENT_VERSION);
+            ssValue >> vInv;
+        }
+
         if (vInv.size() > MAX_INV_SZ)
         {
             pfrom->Misbehaving(20);
@@ -3042,7 +3084,20 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                 {
                     CBlock block;
                     block.ReadFromDisk((*mi).second);
-                    pfrom->PushMessage("block", block);
+
+                    if(pfrom->nServices & NODE_SMASH)
+                    {
+                        CDataStream ssValue(SER_NETWORK, CLIENT_VERSION);
+                        ssValue.reserve(sizeof(block));
+                        ssValue << block;
+                        std::string sBlockComp = CompressData(ssValue.str());
+                        pfrom->PushMessage("blockc", sBlockComp);
+                        sBlockComp = "";
+                    }
+                    else
+                    {
+                        pfrom->PushMessage("block", block);
+                    }
 
                     // Trigger them to send a getblocks request for the next batch of inventory
                     if (inv.hash == pfrom->hashContinue)
@@ -3086,7 +3141,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "getblocks")
+    else if (!pfrom->fForeignNode && strCommand == "getblocks")
     {
         CBlockLocator locator;
         uint256 hashStop;
@@ -3122,7 +3177,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             }
         }
     }
-    else if (strCommand == "checkpoint")
+    else if (!pfrom->fForeignNode && strCommand == "checkpoint")
     {
         CSyncCheckpoint checkpoint;
         vRecv >> checkpoint;
@@ -3137,7 +3192,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         }
     }
 
-    else if (strCommand == "getheaders")
+    else if (!pfrom->fForeignNode && strCommand == "getheaders")
     {
         CBlockLocator locator;
         uint256 hashStop;
@@ -3173,7 +3228,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "tx")
+    else if (!pfrom->fForeignNode && strCommand == "tx")
     {
         vector<uint256> vWorkQueue;
         vector<uint256> vEraseQueue;
@@ -3239,7 +3294,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "block")
+    else if (!pfrom->fForeignNode && strCommand == "block")
     {
         CBlock block;
         vRecv >> block;
@@ -3261,8 +3316,36 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
             SecureMsgScanBlock(block);
     }
 
+    else if(!pfrom->fForeignNode && strCommand == "blockc")
+    {
+        CBlock block;
+        // uncompress the data
+        std::string sComp;
+        vRecv >> sComp;
+        std::string uncomp = UncompressData(sComp);
+        CDataStream ssValue(uncomp.data(), uncomp.data() + uncomp.size(), SER_NETWORK, CLIENT_VERSION);
+        ssValue >> block;
 
-    else if (strCommand == "getaddr")
+        uint256 hashBlock = block.GetHash();
+
+        printf("received compressed block %s\n", hashBlock.ToString().substr(0,20).c_str());
+        // block.print();
+
+        CInv inv(MSG_BLOCK, hashBlock);
+        pfrom->AddInventoryKnown(inv);
+
+        if (ProcessBlock(pfrom, &block))
+            mapAlreadyAskedFor.erase(inv);
+
+        if (block.nDoS)
+            pfrom->Misbehaving(block.nDoS);
+
+        if (fSecMsgEnabled)
+            SecureMsgScanBlock(block);
+    }
+
+
+    else if (!pfrom->fForeignNode && strCommand == "getaddr")
     {
         // Don't return addresses older than nCutOff timestamp
         int64_t nCutOff = GetTime() - (nNodeLifespan * 24 * 60 * 60);
@@ -3274,7 +3357,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "mempool")
+    else if (!pfrom->fForeignNode && strCommand == "mempool")
     {
         std::vector<uint256> vtxid;
         mempool.queryHashes(vtxid);
@@ -3286,11 +3369,23 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
                     break;
         }
         if (vInv.size() > 0)
-            pfrom->PushMessage("inv", vInv);
+        {
+            if(pfrom->nServices & NODE_SMASH)
+            {
+                CDataStream ssValue(SER_NETWORK, CLIENT_VERSION);
+                ssValue.reserve(sizeof(vInv));
+                ssValue << vInv;
+                std::string sInvComp = CompressData(ssValue.str());
+                pfrom->PushMessage("invc", sInvComp);
+                sInvComp = "";
+            }
+            else
+                pfrom->PushMessage("inv", vInv);
+        }
     }
 
 
-    else if (strCommand == "checkorder")
+    else if (!pfrom->fForeignNode && strCommand == "checkorder")
     {
         uint256 hashReply;
         vRecv >> hashReply;
@@ -3416,7 +3511,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
     }
 
 
-    else if (strCommand == "alert")
+    else if (!pfrom->fForeignNode && strCommand == "alert")
     {
         CAlert alert;
         vRecv >> alert;
@@ -3446,11 +3541,14 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv, 
         }
     }
 
-
     else
     {
-        if (fSecMsgEnabled)
+        if (!pfrom->fForeignNode && fSecMsgEnabled)
             SecureMsgReceiveData(pfrom, strCommand, vRecv);
+
+        // Plume Message Filter
+        if(!pfrom->fForeignNode && fPlumeEnabled)
+            PlumeReceiveMessage(pfrom, strCommand, vRecv);
         
         // Ignore unknown commands for extensibility
     }
@@ -3504,9 +3602,19 @@ bool ProcessMessages(CNode* pfrom)
 
         // Scan for message start
         if (memcmp(msg.hdr.pchMessageStart, pchMessageStart, sizeof(pchMessageStart)) != 0) {
-            printf("\n\nPROCESSMESSAGE: INVALID MESSAGESTART\n\n");
-            fOk = false;
-            break;
+            //printf("\n\nPROCESSMESSAGE: INVALID MESSAGESTART\n\n");
+            printf("\n\nPROCESSMESSAGE: DIFFERENT MESSAGE START, CHECKING IBTP\n");
+            std::string schain;
+            if(ibtp.IsIbtpChain(msg.hdr.pchMessageStart, schain))
+            {
+                pfrom->sBlockchain = schain;
+                pfrom->fForeignNode = true;
+            }
+            else
+            {
+                fOk = false;
+                break;
+            }
         }
 
         // Read header
@@ -3659,14 +3767,39 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                     // receiver rejects addr messages larger than 1000
                     if (vAddr.size() >= 1000)
                     {
-                        pto->PushMessage("addr", vAddr);
-                        vAddr.clear();
+                        if(pto->nServices & NODE_SMASH)
+                        {
+                            CDataStream ssValue(SER_NETWORK, CLIENT_VERSION);
+                            ssValue.reserve(sizeof(vAddr));
+                            ssValue << vAddr;
+                            std::string sAddrComp = CompressData(ssValue.str());
+                            pto->PushMessage("addrc", sAddrComp);
+                            sAddrComp = "";
+                            vAddr.clear();
+                        }
+                        else
+                        {
+                            pto->PushMessage("addr", vAddr);
+                            vAddr.clear();
+                        }
                     }
                 }
             }
             pto->vAddrToSend.clear();
             if (!vAddr.empty())
-                pto->PushMessage("addr", vAddr);
+            {
+                if(pto->nServices & NODE_SMASH)
+                {
+                    CDataStream ssValue(SER_NETWORK, CLIENT_VERSION);
+                    ssValue.reserve(sizeof(vAddr));
+                    ssValue << vAddr;
+                    std::string sAddrComp = CompressData(ssValue.str());
+                    pto->PushMessage("addrc", sAddrComp);
+                    sAddrComp = "";
+                }
+                else
+                    pto->PushMessage("addr", vAddr);
+            }
         }
 
 
@@ -3717,7 +3850,19 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                     vInv.push_back(inv);
                     if (vInv.size() >= 1000)
                     {
-                        pto->PushMessage("inv", vInv);
+                        if(pto->nServices & NODE_SMASH)
+                        {
+                            CDataStream ssValue(SER_NETWORK, CLIENT_VERSION);
+                            ssValue.reserve(sizeof(vInv));
+                            ssValue << vInv;
+                            std::string sInvComp = CompressData(ssValue.str());
+                            pto->PushMessage("invc", sInvComp);
+                            sInvComp = "";
+                        }
+                        else
+                        {
+                            pto->PushMessage("inv", vInv);
+                        }
                         vInv.clear();
                     }
                 }
@@ -3725,8 +3870,21 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
             pto->vInventoryToSend = vInvWait;
         }
         if (!vInv.empty())
-            pto->PushMessage("inv", vInv);
-
+        {
+            if(pto->nServices & NODE_SMASH)
+            {
+                CDataStream ssValue(SER_NETWORK, CLIENT_VERSION);
+                ssValue.reserve(sizeof(vInv));
+                ssValue << vInv;
+                std::string sInvComp = CompressData(ssValue.str());
+                pto->PushMessage("invc", sInvComp);
+                sInvComp = "";
+            }
+            else
+            {
+                pto->PushMessage("inv", vInv);
+            }
+        }
 
         //
         // Message: getdata
@@ -3744,7 +3902,19 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
                 vGetData.push_back(inv);
                 if (vGetData.size() >= 1000)
                 {
-                    pto->PushMessage("getdata", vGetData);
+                    if(pto->nServices & NODE_SMASH)
+                    {
+                        CDataStream ssValue(SER_NETWORK, CLIENT_VERSION);
+                        ssValue.reserve(sizeof(vGetData));
+                        ssValue << vGetData;
+                        std::string sGDComp = CompressData(ssValue.str());
+                        pto->PushMessage("getdatac", sGDComp);
+                        sGDComp = "";
+                    }
+                    else
+                    {
+                        pto->PushMessage("getdata", vGetData);
+                    }
                     vGetData.clear();
                 }
                 mapAlreadyAskedFor[inv] = nNow;
@@ -3761,4 +3931,58 @@ bool SendMessages(CNode* pto, bool fSendTrickle)
     
     
     return true;
+}
+
+
+std::string CompressData(std::string uncompressed)
+{
+    std::vector<unsigned char> vchCompressed;
+    uint32_t lenMsg = uncompressed.size();
+    int worstCase = LZ4_compressBound(uncompressed.size());
+    try
+    {
+        vchCompressed.resize(worstCase);
+    }
+    catch (std::exception& e)
+    {
+        printf("vchCompressed.resize %u threw: %s.\n", worstCase, e.what());
+        return "";
+    };
+
+    int lenComp = LZ4_compress((char*)uncompressed.c_str(), (char*)&vchCompressed[0], lenMsg);
+    if (lenComp < 1)
+    {
+        PlumeLog("Could not compress message data.\n");
+        return "";
+    };
+
+    std::string cmp(vchCompressed[0], vchCompressed.size());
+    return cmp;
+}
+
+std::string UncompressData(std::string scompressed)
+{
+    std::vector<unsigned char> compressed(scompressed.begin(), scompressed.end());
+    uint32_t lenComp = compressed.size();
+    std::vector<unsigned char> uncompressed;
+    uint32_t maxosize = 10 * lenComp;
+    uncompressed.resize(maxosize);
+    try
+    {
+        int osize = LZ4_uncompress_unknownOutputSize((char*)&compressed[0], (char*)&uncompressed[0], lenComp, maxosize);
+        if(osize < 0)
+        {
+            printf("Error uncompressing data len comp: %d maxosize: %d actual: %d\n", lenComp, maxosize, osize);
+            return "";
+        }
+
+        uncompressed.resize(osize);
+        std::string uncomp(uncompressed[0], uncompressed.size());
+        return uncomp;
+    }
+    catch(std::exception& e)
+    {
+        printf("Error uncompressing data len comp: %d maxosize: %d error: %s\n", lenComp, maxosize, e.what());
+        return "";
+    }
 }

@@ -154,6 +154,7 @@ enum threadId
     THREAD_DUMPADDRESS,
     THREAD_RPCHANDLER,
     THREAD_STAKE_MINER,
+    THREAD_PLUME_PROCESS,
 
     THREAD_MAX
 };
@@ -193,6 +194,8 @@ public:
     int nMisbehavior;
     double dPingTime;
     double dPingWait;
+    std::string sBlockchain;
+    bool fForeignNode;
 };
 
 
@@ -341,6 +344,10 @@ public:
     int64_t nPingUsecTime;
     // Whether a ping is requested.
     bool fPingQueued;
+    // Name of the node's blockchain/coin network
+    std::string sBlockchain;
+    // whether this is a foreign ibtp node
+    bool fForeignNode;
 
     CNode(SOCKET hSocketIn, CAddress addrIn, std::string addrNameIn = "", bool fInboundIn=false) : ssSend(SER_NETWORK, INIT_PROTO_VERSION), setAddrKnown(5000)
     {
@@ -378,6 +385,8 @@ public:
         nPingUsecStart = 0;
         nPingUsecTime = 0;
         fPingQueued = false;
+        sBlockchain = fTestNet ? "Sapience AIFX Testnet" : "Sapience AIFX";
+        fForeignNode = false;
 
         // Be shy and don't send version until we hear
         if (hSocket != INVALID_SOCKET && !fInbound)

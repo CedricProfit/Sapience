@@ -39,6 +39,9 @@ inline uint256 Hashblake(const T1 pbegin, const T1 pend)
     return hash1;
 }
 
+extern bool bStakingUserEnabled;
+extern bool bPlumeUserEnabled;
+
 static const int LAST_POW_BLOCK = 20160; // 2 weeks of blocks
 static const int LAST_FAIR_LAUNCH_BLOCK = 0;
 
@@ -135,8 +138,8 @@ const CBlockIndex* GetLastBlockIndex(const CBlockIndex* pindex, bool fProofOfSta
 void StakeMiner(CWallet *pwallet);
 void ResendWalletTransactions(bool fForce = false);
 
-
-
+std::string CompressData(std::string uncompressed);
+std::string UncompressData(std::string compressed);
 
 
 

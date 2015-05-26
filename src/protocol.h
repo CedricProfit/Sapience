@@ -59,7 +59,7 @@ class CMessageHeader
             CHECKSUM_OFFSET=MESSAGE_SIZE_OFFSET+MESSAGE_SIZE_SIZE,
             HEADER_SIZE=MESSAGE_START_SIZE+COMMAND_SIZE+MESSAGE_SIZE_SIZE+CHECKSUM_SIZE
         };
-        char pchMessageStart[MESSAGE_START_SIZE];
+        unsigned char pchMessageStart[MESSAGE_START_SIZE];
         char pchCommand[COMMAND_SIZE];
         unsigned int nMessageSize;
         unsigned int nChecksum;
@@ -68,7 +68,13 @@ class CMessageHeader
 /** nServices flags */
 enum
 {
-    NODE_NETWORK = (1 << 0),
+    NODE_NETWORK    = (1 << 0),
+    NODE_PLUME      = (1 << 1),
+    NODE_AI         = (1 << 2),
+    NODE_ASSETS     = (1 << 3),
+    NODE_IBTP       = (1 << 4),
+    NODE_BURST      = (1 << 5),
+    NODE_SMASH      = (1 << 6)
 };
 
 /** A CService with information about it as peer */
